@@ -123,8 +123,8 @@ void put(char* key, char* value){
         curr_value = temp_value;
     }
 
-   // rehash();
-
+    rehash();
+    put(curr_key,curr_value);
 }
 
 int main(void)

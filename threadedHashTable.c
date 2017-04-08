@@ -35,7 +35,10 @@ void createHashTable(int num_buckets, float max_load_factor){
 }
  
 float getLoadFactor(){
-    return 1.0*hashtable->num_entries/hashtable->num_buckets;
+   pthread_rwlock_rdlock(&(hashtable->hashTableLock));
+   float curr_load_factor = 1.0*hashtable->num_entries/hashtable->num_buckets;
+   pthread_rwlock_unlock(&(hashtable->hashTableLock));
+   return curr_load_factor;     
 }
 
 entryNode* createEntryNode(char* key, char* value){
@@ -137,8 +140,12 @@ void reinsertNode(char* key, char* value){
 void resize() {
     printf("Resize requesting Write Lock\n");
     pthread_rwlock_wrlock(&(hashtable->hashTableLock));
-    
     printf("Resize acquired Write Lock\n");
+    if((1.0*hashtable->num_entries/hashtable->num_buckets) < hashtable->max_load_factor)
+        pthread_rwlock_unlock(&(hashtable->hashTableLock));
+        return;
+    }
+    
     bucketNode* old_buckets = hashtable->buckets;
     int old_num_buckets = hashtable->num_buckets;
     
