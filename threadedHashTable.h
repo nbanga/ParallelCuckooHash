@@ -5,6 +5,8 @@
 #include <limits.h>
 #include <pthread.h>
 
+#define MAX_SIZE 1024
+
 typedef struct node{
     char *key;
     char *value;
@@ -17,11 +19,11 @@ typedef struct{
 }bucketNode;
 
 typedef struct{
-    bucketNode** buckets;
+    bucketNode* buckets;
     int num_entries;
     int num_buckets;
     float max_load_factor;
-    float curr_load_factor;
+    pthread_rwlock_t hashTableLock;
 }hashTable;
 
 extern hashTable* hashtable;
@@ -35,6 +37,3 @@ extern float getLoadFactor();
 extern void createHashTable(int, float);
 extern entryNode* createEntryNode(char*, char*);
 extern void insertEntryNode(entryNode*);
-
-
-
