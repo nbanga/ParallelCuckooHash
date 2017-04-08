@@ -7,11 +7,9 @@
 
 #define NUM_SLOTS 4
 #define MAX_ITERATIONS 100
+#define MAX_SIZE 1024
 
-typedef enum{
-    HASHLITTLE2, 
-    HASHWORD2
-}hash_function;
+typedef enum{HASHLITTLE2, HASHWORD2} hash_function;
 
 typedef struct node{
     char *key;
