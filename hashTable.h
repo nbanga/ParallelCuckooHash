@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <limits.h>
 
+#define MAX_SIZE 1024
+
 typedef struct node{
     char *key;
     char *value;
@@ -15,7 +17,6 @@ typedef struct{
     int num_entries;
     int num_buckets;
     float max_load_factor;
-    float curr_load_factor;
 }hashTable;
 
 extern hashTable* hashtable;

@@ -1,7 +1,5 @@
 #include "hashTable.h"
 
-#define MAX_SIZE 1024
-
 hashTable* hashtable;
 
 int hash(char* key){
@@ -84,16 +82,16 @@ void resize() {
     //TODO: calculate time
     entryNode** old_buckets = hashtable->buckets;
     int old_num_buckets = hashtable->num_buckets;
-
+    
     hashtable->num_buckets *= 2;
     hashtable->num_entries = 0;
     hashtable->buckets = (entryNode**)malloc(hashtable->num_buckets*sizeof(entryNode*));
-
+    
     int i;
     for(i=0; i<hashtable->num_buckets;i++){
         hashtable->buckets[i]=NULL;
     }
-
+    
     for(i=0;i<old_num_buckets;i++){
         entryNode* curr = old_buckets[i];
         entryNode* temp;
@@ -104,7 +102,7 @@ void resize() {
             free(temp);
         }
     }
-
+    
     free(old_buckets);
     return;
 }
