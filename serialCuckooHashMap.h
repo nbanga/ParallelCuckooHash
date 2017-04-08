@@ -9,8 +9,8 @@
 #define MAX_ITERATIONS 100
 
 typedef enum{
-    hashlittle2, 
-    hashword2
+    HASHLITTLE2, 
+    HASHWORD2
 }hash_function;
 
 typedef struct node{
@@ -24,16 +24,14 @@ typedef struct{
     int num_entries;
     float max_load_factor;
     hash_function hashFunction;
-}hashTable;
+}cuckooHashTable;
 
-extern hashTable* hashtable;
+extern cuckooHashTable* cuckoohashtable;
 
 extern char* get(char*);
 extern void put(char*, char*);
 extern bool removeKey(char*);
-extern float getLoadFactor();
 extern void rehash();
 extern void resize();
 extern void createHashTable(int, float);
-extern entryNode* createEntryNode(char*, char*);
-extern void insertEntryNode(entryNode*);
+extern void computeHash(const char*, uint32_t *, uint32_t*);
