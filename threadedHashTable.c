@@ -141,7 +141,7 @@ void resize() {
     printf("Resize requesting Write Lock\n");
     pthread_rwlock_wrlock(&(hashtable->hashTableLock));
     printf("Resize acquired Write Lock\n");
-    if((1.0*hashtable->num_entries/hashtable->num_buckets) < hashtable->max_load_factor)
+    if((1.0*hashtable->num_entries/hashtable->num_buckets) < hashtable->max_load_factor){
         pthread_rwlock_unlock(&(hashtable->hashTableLock));
         return;
     }

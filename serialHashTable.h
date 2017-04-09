@@ -1,9 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include <limits.h>
-
+#include "header.h"
 #define MAX_SIZE 1024
 
 typedef struct node{

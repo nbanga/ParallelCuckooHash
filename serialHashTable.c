@@ -1,4 +1,4 @@
-#include "hashTable.h"
+#include "serialHashTable.h"
 
 hashTable* hashtable;
 

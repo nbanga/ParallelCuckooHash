@@ -1,9 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include <limits.h>
-#include "lookup3.h"
+#include "header.h"
 
 #define NUM_SLOTS 4
 #define MAX_ITERATIONS 100
