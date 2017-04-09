@@ -25,18 +25,35 @@ void computehash(char* key, uint32_t *h1, uint32_t *h2){
     hashlittle2((void *)key, strlen(key), h1, h2);
 }
 
+void printHashTable(void){
+    printf("Print Hash Table\n");
+    int buckets = cuckoohashtable->num_buckets;
+    int i,j;
+    entryNode *newNode;
+
+    for(i=0; i<buckets; i++){
+         newNode = cuckoohashtable->buckets[i];
+         for(j=0; j<NUM_SLOTS;j++){
+             if(newNode[j].key != NULL){
+                 printf("%s ",newNode[j].key);
+             }
+         }
+    }
+}
+
 char* get(char* key){
     uint32_t h1 = 0, h2 = 0;
     entryNode* temp;
     int i;    
 
     computehash(key, &h1, &h2);
+    printf("GET H1: %d, H2: %d, key: %s\n", h1, h2, key);
     
     h1 = h1 % cuckoohashtable->num_buckets;
     temp = cuckoohashtable->buckets[h1];    
     for(i = 0; i< NUM_SLOTS; i++){
        if(temp[i].key != NULL && !strcmp(temp[i].key, key)){
-           printf("Get : Found value : %s\n", temp[i].value);
+           printf("Get : Key : %s at [%d][%d]\n", temp[i].key, h1, i);
            return temp[i].value;
        }
     } 
@@ -45,7 +62,7 @@ char* get(char* key){
     temp = cuckoohashtable->buckets[h2];    
     for(i = 0; i< NUM_SLOTS; i++){
        if(temp[i].key != NULL && !strcmp(temp[i].key, key)){
-          printf("Get : Found value : %s\n", temp[i].value);
+          printf("Get : Key : %s at [%d][%d]\n", temp[i].key, h2, i);
           return temp[i].value;
        }
     }
@@ -98,9 +115,9 @@ void freeHashTable(cuckooHashTable* newHashTable){
     return;
 }
 
-int _put(cuckooHashTable* htptr, char *key, char *value){
+entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
     int num_iterations = 0;
-    uint32_t h1, h2;
+    uint32_t h1 = 0, h2 = 0;
     entryNode *first, *second;
     entryNode evictentry;
     char *curr_key, *curr_value;
@@ -115,7 +132,8 @@ int _put(cuckooHashTable* htptr, char *key, char *value){
         printf("Num Iterations %d for key %s\n", num_iterations, key);
         num_iterations++;
         computehash(curr_key, &h1, &h2);
-        
+        printf("PUT H1: %d, H2: %d, key: %s\n", h1, h2, curr_key);
+
         h1 = h1 % htptr->num_buckets;
         first = htptr->buckets[h1];    
         h2 = h2 % htptr->num_buckets;
@@ -128,7 +146,7 @@ int _put(cuckooHashTable* htptr, char *key, char *value){
                 strcpy(first[i].key, curr_key);
                 strcpy(first[i].value, curr_value);
                 printf("Inserted Key %s in bucket %d\n", key, h1); 
-                return 0;
+                return NULL;
             }
         }
 
@@ -139,7 +157,7 @@ int _put(cuckooHashTable* htptr, char *key, char *value){
                 strcpy(second[i].key, curr_key);
                 strcpy(second[i].value, curr_value);
                 printf("Inserted Key %s in bucket %d\n", key, h1);
-                return 0;
+                return NULL;
             }
         }
 
@@ -162,28 +180,38 @@ int _put(cuckooHashTable* htptr, char *key, char *value){
         curr_key = temp_key;
         curr_value = temp_value;
     }
-    return 1;
+    
+    entryNode* finalevictedNode = (entryNode *) malloc(sizeof(entryNode));
+    finalevictedNode->key = curr_key;
+    finalevictedNode->value = curr_value;
+    return finalevictedNode;
 }
 
 void resize(int num_buckets){
     printf("In Resize\n");
     cuckooHashTable *newHashTable = createHashTable(num_buckets);
-    int i, j, res = 0;
+    int i, j;
+    entryNode* res;
+
     for(i = 0; i < cuckoohashtable->num_buckets; i++){
         entryNode *bucketRow = cuckoohashtable->buckets[i]; 
         for(j=0; j < NUM_SLOTS; j++){
-            res = _put(newHashTable, bucketRow[j].key, bucketRow[j].value);
-            if(res == 1){
-                break;
+            if(bucketRow[j].key != NULL){
+                res = _put(newHashTable, bucketRow[j].key, bucketRow[j].value);
+                if(res != NULL){
+                    break;
+                }
             }
         }
-        if(res == 1)
+        if(res != NULL)
             break;        
     }
-    if(res == 1){
+    if(res != NULL){
         printf("Inside Resize: Free and Resize\n");
+        printHashTable();
         freeHashTable(newHashTable);
-        resize(2 * num_buckets);  
+        resize(2 * num_buckets);
+        _put(cuckoohashtable, res->key, res->value);
     }
     cuckoohashtable = newHashTable;
 }
@@ -196,11 +224,13 @@ void put(char* key, char* value){
         return;
     }
     
-    int result = _put(cuckoohashtable, key, value);
+    entryNode* res = _put(cuckoohashtable, key, value);
    
-    if(result){
+    if(res != NULL){
+        printHashTable();
         resize((cuckoohashtable->num_buckets) * 2);
-        _put(cuckoohashtable, key, value);
+        _put(cuckoohashtable, res->key, res->value);
+        printHashTable();
     }
     printf("Put a New value : %s\n", value);
     return;
@@ -208,12 +238,12 @@ void put(char* key, char* value){
 
 
 int main(void){
-    cuckoohashtable = createHashTable(10);
+    cuckoohashtable = createHashTable(2);
     printf("createHashTable: num_buckets %d\n", cuckoohashtable->num_buckets);
 
-    char** keys = (char**)malloc(20*sizeof(char*)); 
+    char** keys = (char**)malloc(60*sizeof(char*)); 
     printf("allocated keys\n");
-    char* value = (char*)malloc(20*sizeof(char)); 
+    char* value = (char*)malloc(60*sizeof(char)); 
     printf("allocated values\n");
     
     int i;
@@ -227,14 +257,19 @@ int main(void){
         put(keys[i],value);
         //printf("put in entry %d\n", i);
     }
-
+    
     printf("num_entries after put = %d\n", cuckoohashtable->num_entries);
     printf("Get\n");
-    for(i=0;i<10;i++){
+    
+    printHashTable();
+    printf("\n");
+
+/*    for(i=0;i<50;i++){
         printf("key: %s, value: %s\n", keys[i],get(keys[i]));
     }
+*/    
 
-    printf("testing resize\n");
+/*    printf("testing resize\n");
     for(i=11;i<20;i++){
         keys[i] = (char*)malloc(10*sizeof(char));
         snprintf(keys[i],10,"%d",i);
@@ -249,6 +284,6 @@ int main(void){
     }
 
 
-    printf("remove key %s : %d\n", "21", removeKey("21"));
-    return 0;
+   printf("remove key %s : %d\n", "21", removeKey("21"));
+*/    return 0;
 }

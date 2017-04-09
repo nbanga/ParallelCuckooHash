@@ -23,7 +23,7 @@ extern cuckooHashTable* cuckoohashtable;
 
 extern char* get(char*);
 extern void put(char*, char*);
-extern int _put(cuckooHashTable*, char*, char*);
+extern entryNode* _put(cuckooHashTable*, char*, char*);
 extern bool removeKey(char*);
 extern void rehash();
 extern void resize();
