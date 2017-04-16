@@ -2,6 +2,10 @@
 
 cuckooHashTable* cuckoohashtable;
 
+int compare(void *a, void *b){
+    return *(int *) a - *(int *)b;
+}
+
 cuckooHashTable* createHashTable(int num_buckets){
 
     cuckooHashTable* hashtable = (cuckooHashTable *) malloc(sizeof(cuckooHashTable));
@@ -145,7 +149,7 @@ entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
                 first[i].value = (char *) malloc(sizeof(char) * MAX_SIZE);
                 strcpy(first[i].key, curr_key);
                 strcpy(first[i].value, curr_value);
-                printf("Inserted Key %s in bucket %d\n", key, h1); 
+                printf("First: Inserted Key %s in bucket %d, %d\n", key, h1, i); 
                 return NULL;
             }
         }
@@ -156,7 +160,7 @@ entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
                 second[i].value = (char *) malloc(sizeof(char) * MAX_SIZE);
                 strcpy(second[i].key, curr_key);
                 strcpy(second[i].value, curr_value);
-                printf("Inserted Key %s in bucket %d\n", key, h1);
+                printf("Second: Inserted Key %s in bucket %d, %d\n", key, h2, i);
                 return NULL;
             }
         }
@@ -176,9 +180,10 @@ entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
 
         strcpy(evictentry.key, curr_key);
         strcpy(evictentry.value, curr_value);
+        printHashTable();
         
-        curr_key = temp_key;
-        curr_value = temp_value;
+        strcpy(curr_key, temp_key);
+        strcpy(curr_value, temp_value);
     }
     
     entryNode* finalevictedNode = (entryNode *) malloc(sizeof(entryNode));
@@ -238,16 +243,16 @@ void put(char* key, char* value){
 
 
 int main(void){
-    cuckoohashtable = createHashTable(2);
+    cuckoohashtable = createHashTable(10);
     printf("createHashTable: num_buckets %d\n", cuckoohashtable->num_buckets);
 
-    char** keys = (char**)malloc(60*sizeof(char*)); 
+    char** keys = (char**)malloc(100*sizeof(char*)); 
     printf("allocated keys\n");
-    char* value = (char*)malloc(60*sizeof(char)); 
+    char* value = (char*)malloc(100*sizeof(char)); 
     printf("allocated values\n");
     
     int i;
-    for(i=0;i<10;i++){
+    for(i=0;i<100;i++){
         keys[i] = (char*)malloc(10*sizeof(char));
         //printf("allocated key %d\n",i);
         snprintf(keys[i],10,"%d",i);
