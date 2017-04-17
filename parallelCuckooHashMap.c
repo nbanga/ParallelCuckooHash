@@ -66,7 +66,8 @@ char* get(char* key){
            return temp[i].value;
        }
     } 
-
+    pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
+    
     h2 = h2 % cuckoohashtable->num_buckets;
     pthread_mutex_lock(&(cuckoohashtable->buckets[h2].bucketLock));
     temp = cuckoohashtable->buckets[h2].firstNode;    
@@ -77,10 +78,9 @@ char* get(char* key){
           pthread_rwlock_unlock(&(cuckoohashtable->hashTableLock));
           return temp[i].value;
        }
-    }
-     
-    pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
+    }     
     pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
+    
     pthread_rwlock_unlock(&(cuckoohashtable->hashTableLock));
     printf("Get : NOT Found key : %s\n", key);
     return NULL;
