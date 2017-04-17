@@ -2,10 +2,6 @@
 
 cuckooHashTable* cuckoohashtable;
 
-int compare(void *a, void *b){
-    return *(int *) a - *(int *)b;
-}
-
 cuckooHashTable* createHashTable(int num_buckets){
 
     cuckooHashTable* hashtable = (cuckooHashTable *) malloc(sizeof(cuckooHashTable));
@@ -66,7 +62,8 @@ char* get(char* key){
            return temp[i].value;
        }
     } 
-
+    pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
+    
     h2 = h2 % cuckoohashtable->num_buckets;
     pthread_mutex_lock(&(cuckoohashtable->buckets[h2].bucketLock));
     temp = cuckoohashtable->buckets[h2].firstNode;    
@@ -78,9 +75,8 @@ char* get(char* key){
           return temp[i].value;
        }
     }
-     
-    pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
     pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
+    
     pthread_rwlock_unlock(&(cuckoohashtable->hashTableLock));
     printf("Get : NOT Found key : %s\n", key);
     return NULL;
@@ -188,7 +184,9 @@ entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
             }
         }
         
-        pthread_mutex_lock(&(cuckoohashtable->buckets[h2].bucketLock));
+        if(h1!=h2){
+            pthread_mutex_lock(&(cuckoohashtable->buckets[h2].bucketLock));
+        }
         for(i = 0; i< NUM_SLOTS; i++){
             if(second[i].key == NULL){
                 second[i].key = (char *) malloc(sizeof(char) * MAX_SIZE);
@@ -196,12 +194,18 @@ entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
                 strcpy(second[i].key, curr_key);
                 strcpy(second[i].value, curr_value);
                 printf("Second: Inserted Key %s in bucket %d, %d\n", key, h2, i);
-                pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
+                pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
+                if(h1!=h2){
+                    pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
+                }
                 return NULL;
             }
             else if(!strcmp(second[i].key,curr_key)){
                 strcpy(second[i].value, curr_value);
-                pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
+                pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
+                if(h1!=h2){
+                    pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
+                }
                 return NULL;
             }
         }
@@ -324,7 +328,7 @@ int main(void){
     pthread_t getthreads[2];
 
     int count = 0;
-    for(count = 0; count < 2; count ++){
+    for(count = 0; count < 2; count++){
     	pthread_create(&putthreads[count], NULL, putthreadfunc, (void *) &count); 
     }
    
@@ -333,7 +337,7 @@ int main(void){
   //  }
 
   	 
-    for(count = 0; count < 2; count ++){
+    for(count = 0; count < 2; count++){
 	pthread_join(putthreads[count], NULL);
 	//pthread_join(getthreads[count], NULL);
     }
