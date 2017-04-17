@@ -238,7 +238,9 @@ entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
         strcpy(curr_value, temp_value);
 
         pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
-        pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
+        
+        if(h1!=h2)
+                pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
     }
     
     entryNode* finalevictedNode = (entryNode *) malloc(sizeof(entryNode));
