@@ -27,8 +27,8 @@ typedef struct{
 extern cuckooHashTable* cuckoohashtable;
 
 extern char* get(char*);
-extern void put(char*, char*);
-extern entryNode* _put(cuckooHashTable*, char*, char*);
+extern void put(char*, char*, int);
+extern entryNode* _put(cuckooHashTable*, char*, char*, int);
 extern bool removeKey(char*);
 extern void resize();
 extern cuckooHashTable* createHashTable(int);
