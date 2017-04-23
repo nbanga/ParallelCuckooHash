@@ -35,44 +35,64 @@ void printHashTable(void){
     tagNode *newNode;
 
     for(i=0; i<buckets; i++){
+         printf("Bucket %d \t", i);
+        
          newNode = cuckoohashtable->buckets[i];
          for(j=0; j<NUM_SLOTS;j++){
              if(newNode[j].entryNodeptr != NULL){
-                 printf("%c %s;",newNode[j].tag, newNode[j].entryNodeptr->key);
+                 printf("%d %s; ",newNode[j].tag, newNode[j].entryNodeptr->key);
+                 //printf("%s ", newNode[j].entryNodeptr->key);
              }
          }
+         printf("\n");
     }
 }
 
 char* get(char* key){
     uint32_t h1 = 0, h2 = 0;
     unsigned char tag;
-    tagNode* temp;
+    tagNode *first, *second;
     int i;    
 
     computehash(key, &h1, &h2);
-    printf("GET H1: %d, H2: %d, key: %s\n", h1, h2, key);
-    tag = hashTag(h1);    
     
+    tag = hashTag(h1);    
     h1 = h1 % cuckoohashtable->num_buckets;
-    temp = cuckoohashtable->buckets[h1];    
+    h2 = h2 % cuckoohashtable->num_buckets;
+    
+/*    if(h1 > h2){
+        uint32_t temp = h1;
+        h1 = h2;
+        h2 = temp; 
+    }
+*/    
+    first = cuckoohashtable->buckets[h1];    
+    second = cuckoohashtable->buckets[h2];    
+    
+    printf("GET H1: %d, H2: %d, key: %s\n", h1, h2, key);
+   
+    
     for(i = 0; i< NUM_SLOTS; i++){
-       if(temp[i].tag == tag && temp[i].entryNodeptr!=NULL){
-           entryNode* entrynode = temp[i].entryNodeptr;
+        
+        printf("Temp1 Tag: %d, My Tag : %d\n", first[i].tag, tag);
+        if(first[i].tag == tag && first[i].entryNodeptr!=NULL){
+           printf("Temp Val: %s\n", first[i].entryNodeptr->key);
+           entryNode* entrynode = first[i].entryNodeptr;
            if(!strcmp(key,entrynode->key)){
-               printf("Get : Key : %s at [%d][%d]\n", temp[i].entryNodeptr->key, h1, i);
+               printf("Get : Key : %s at [%d][%d]\n", first[i].entryNodeptr->key, h1, i);
                return entrynode->value;
            }
        }
     } 
 
-    h2 = h2 % cuckoohashtable->num_buckets;
-    temp = cuckoohashtable->buckets[h2];    
-    for(i = 0; i< NUM_SLOTS; i++){
-       if(temp[i].tag == tag && temp[i].entryNodeptr!=NULL){
-           entryNode* entrynode = temp[i].entryNodeptr;
+   for(i = 0; i< NUM_SLOTS; i++){
+
+       printf("Temp2 Tag: %d, My Tag : %d\n", second[i].tag, tag);
+       if(second[i].tag == tag && second[i].entryNodeptr!=NULL){
+           printf("Temp Val: %s\n", second[i].entryNodeptr->key);
+           entryNode* entrynode = second[i].entryNodeptr;
            if(!strcmp(key,entrynode->key)){
-               printf("Get : Key : %s at [%d][%d]\n", temp[i].entryNodeptr->key, h1, i);
+               printf("Get : Key : %s at [%d][%d]\n", second[i].entryNodeptr->key, h1, i);
                return entrynode->value;
            }
        }
@@ -84,38 +104,43 @@ char* get(char* key){
 
 bool removeKey(char* key){
     uint32_t h1 = 0, h2 = 0;
-    tagNode* temp;
     int i;    
     unsigned char tag;
+    tagNode *first, *second;
 
     computehash(key, &h1, &h2);
-    tag = hashTag(h1);
     
+    tag = hashTag(h1);    
     h1 = h1 % cuckoohashtable->num_buckets;
-    temp = cuckoohashtable->buckets[h1];    
+    h2 = h2 % cuckoohashtable->num_buckets;
+   
+    first = cuckoohashtable->buckets[h1];    
+    second = cuckoohashtable->buckets[h2];    
+    
+    printf("GET H1: %d, H2: %d, key: %s\n", h1, h2, key);
+   
+    
     for(i = 0; i< NUM_SLOTS; i++){
-       if(temp[i].tag == tag && temp[i].entryNodeptr!=NULL){
-           entryNode* entrynode = temp[i].entryNodeptr;
+       if(first[i].tag == tag && first[i].entryNodeptr!=NULL){
+           entryNode* entrynode = first[i].entryNodeptr;
            if(!strcmp(entrynode->key, key)){
                free(entrynode->key);
                free(entrynode->value);
                free(entrynode);
-               temp[i].entryNodeptr=NULL;
+               first[i].entryNodeptr=NULL;
                return true;
            }
        }
     } 
 
-    h2 = h2 % cuckoohashtable->num_buckets;
-    temp = cuckoohashtable->buckets[h2];    
     for(i = 0; i< NUM_SLOTS; i++){
-        if(temp[i].tag == tag && temp[i].entryNodeptr!=NULL){
-           entryNode* entrynode = temp[i].entryNodeptr;
+        if(second[i].tag == tag && second[i].entryNodeptr!=NULL){
+           entryNode* entrynode = second[i].entryNodeptr;
            if(!strcmp(entrynode->key, key)){
                free(entrynode->key);
                free(entrynode->value);
                free(entrynode);
-               temp[i].entryNodeptr=NULL;
+               second[i].entryNodeptr=NULL;
                return true;
            }
        } 
@@ -151,15 +176,18 @@ entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
     while(num_iterations < MAX_ITERATIONS){
         printf("Num Iterations %d for key %s\n", num_iterations, key);
         num_iterations++;
+        h1 = 0; h2 = 0;
         computehash(curr_key, &h1, &h2);
+
+        tag = hashTag(h1);    
+        h1 = h1 % htptr->num_buckets;
+        h2 = h2 % htptr->num_buckets;
+        
+        first = htptr->buckets[h1];    
+        second = htptr->buckets[h2];
+        
         printf("PUT H1: %d, H2: %d, key: %s\n", h1, h2, curr_key);
 
-        h1 = h1 % htptr->num_buckets;
-        first = htptr->buckets[h1];    
-        h2 = h2 % htptr->num_buckets;
-        second = htptr->buckets[h2];
-        tag = hashTag(h1);
-    
         for(i = 0; i< NUM_SLOTS; i++){
             if (first[i].entryNodeptr == NULL){
                 entryNode* entrynode = (entryNode*) malloc(1*sizeof(entryNode));
@@ -169,7 +197,7 @@ entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
                 strcpy(entrynode->value,curr_value);
                 first[i].tag = tag;
                 first[i].entryNodeptr = entrynode;
-                printf("First: Inserted Key %s in bucket %d, %d\n", key, h1, i); 
+                printf("First: Inserted Key %s in bucket %d, %d with tag %d\n", key, h1, i, tag); 
                 return NULL;
             }
             else if(!strcmp(first[i].entryNodeptr->key,curr_key)){
@@ -187,7 +215,7 @@ entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
                 strcpy(entrynode->value,curr_value);
                 second[i].tag = tag;
                 second[i].entryNodeptr = entrynode;
-                printf("Second: Inserted Key %s in bucket %d, %d\n", key, h2, i); 
+                printf("Second: Inserted Key %s in bucket %d, %d with tag %d\n", key, h2, i, tag); 
                 return NULL;
             }
             else if(!strcmp(second[i].entryNodeptr->key,curr_key)){
@@ -269,7 +297,7 @@ void put(char* key, char* value){
 
 
 int main(void){
-    cuckoohashtable = createHashTable(10);
+    cuckoohashtable = createHashTable(3);
     printf("createHashTable: num_buckets %d\n", cuckoohashtable->num_buckets);
 
     char** keys = (char**)malloc(100*sizeof(char*)); 
@@ -278,7 +306,7 @@ int main(void){
     printf("allocated values\n");
     
     int i;
-    for(i=0;i<100;i++){
+    for(i=0;i<11;i++){
         keys[i] = (char*)malloc(10*sizeof(char));
         //printf("allocated key %d\n",i);
         snprintf(keys[i],10,"%d",i);
@@ -289,32 +317,34 @@ int main(void){
         //printf("put in entry %d\n", i);
     }
     
-    printf("num_entries after put = %d\n", cuckoohashtable->num_buckets);
-    printf("Get\n");
-    
-    printHashTable();
-    printf("\n");
-
-  /* for(i=0;i<20;i++){
-        printf("key: %s, value: %s\n", keys[i],get(keys[i]));
-    }*/
-    
-
     printf("testing resize\n");
-    for(i=11;i<20;i++){
+    for(i=11;i<30;i++){
         keys[i] = (char*)malloc(10*sizeof(char));
         snprintf(keys[i],10,"%d",i);
         snprintf(value,20,"%d%s",i,"values");
         put(keys[i],value);
     }
     
+    
+    printf("Get\n");
+    
+    printHashTable();
+    printf("\n");
+    
+    for(i=0;i<20;i++){
+        printf("key: %s, value: %s\n", keys[i],get(keys[i]));
+    }
+ 
     printf("createHashTable: num_buckets %d\n", cuckoohashtable->num_buckets);
+
+    printHashTable();
+    printf("\n\n Remove \n\n");
 
     for(i=0;i<5;i++){
         printf("remove key %s : %d\n", keys[i], removeKey(keys[i]));
     }
+    
+    printHashTable();
 
-
-   printf("remove key %s : %d\n", "101", removeKey("101"));
-   return 0;
+    return 0;
 }
