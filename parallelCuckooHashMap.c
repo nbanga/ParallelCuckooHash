@@ -2,10 +2,6 @@
 
 cuckooHashTable* cuckoohashtable;
 
-int compare(void *a, void *b){
-    return *(int *) a - *(int *)b;
-}
-
 cuckooHashTable* createHashTable(int num_buckets){
 
     cuckooHashTable* hashtable = (cuckooHashTable *) malloc(sizeof(cuckooHashTable));
@@ -135,10 +131,14 @@ void freeHashTable(cuckooHashTable* newHashTable){
 
     for(i=0; i<newHashTable->num_buckets; i++){
         for(j=0;j<NUM_SLOTS;j++){
-            free(newHashTable->buckets[i].firstNode[j].key);
-            free(newHashTable->buckets[i].firstNode[j].value);
-            free(&(newHashTable->buckets[i].firstNode[j]));
+            if(newHashTable->buckets[i].firstNode[j].key!=NULL){
+                free(newHashTable->buckets[i].firstNode[j].key);
+            }
+            if(newHashTable->buckets[i].firstNode[j].value!=NULL){
+                free(newHashTable->buckets[i].firstNode[j].value);
+            }
         }
+        free(&(newHashTable->buckets[i].firstNode));
         free(&(newHashTable->buckets[i]));
     }
     free(newHashTable);
@@ -265,8 +265,9 @@ void resize(int num_buckets, int thread_id){
         return;
     }
 
+    printf("In Hererererrerererrerererererre===================\n");
     cuckooHashTable *newHashTable;
-    int req_buckets = num_buckets*2;
+    int req_buckets = num_buckets;
     int i, j;
     entryNode *res, *bucketRow;
     while(true){
@@ -298,7 +299,10 @@ void resize(int num_buckets, int thread_id){
     }
     
     freeHashTable(cuckoohashtable);
+    printf("Old Cuckoohashtable = %u\n", cuckoohashtable);
     cuckoohashtable = newHashTable;
+    printf("New Cuckoohashtable = %u\n", cuckoohashtable);
+    printf("Size of hash table = %d!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", cuckoohashtable->num_buckets);
     pthread_rwlock_unlock(&(cuckoohashtable->hashTableLock)); 
 }
 
@@ -313,7 +317,7 @@ void put(char* key, char* value, int thread_id){
         printHashTable();
         int old_num_buckets = cuckoohashtable->num_buckets;
         pthread_rwlock_unlock(&(cuckoohashtable->hashTableLock)); 
-        resize(old_num_buckets, thread_id);
+        resize(old_num_buckets*2, thread_id);
         pthread_rwlock_rdlock(&(cuckoohashtable->hashTableLock)); 
         _put(cuckoohashtable, res->key, res->value, thread_id);
         //printHashTable();
@@ -366,7 +370,7 @@ int main(void){
     pthread_t getthreads[2];
 
     int count = 0;
-    for(count = 0; count < 2; count ++){
+    for(count = 0; count < 1; count ++){
     	pthread_create(&putthreads[count], NULL, putthreadfunc, (void *) &count); 
     }
    
@@ -375,7 +379,7 @@ int main(void){
 //    }
 
   	 
-    for(count = 0; count < 2; count ++){
+    for(count = 0; count < 1; count ++){
 	pthread_join(putthreads[count], NULL);
 //	pthread_join(getthreads[count], NULL);
     }
