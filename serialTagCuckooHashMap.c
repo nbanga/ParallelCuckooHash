@@ -58,19 +58,9 @@ char* get(char* key){
     
     tag = hashTag(h1);    
     h1 = h1 % cuckoohashtable->num_buckets;
-    h2 = h2 % cuckoohashtable->num_buckets;
-    
-/*    if(h1 > h2){
-        uint32_t temp = h1;
-        h1 = h2;
-        h2 = temp; 
-    }
-*/    
     first = cuckoohashtable->buckets[h1];    
-    second = cuckoohashtable->buckets[h2];    
     
     printf("GET H1: %d, H2: %d, key: %s\n", h1, h2, key);
-   
     
     for(i = 0; i< NUM_SLOTS; i++){
         
@@ -85,6 +75,9 @@ char* get(char* key){
        }
     } 
 
+   h2 = h2 % cuckoohashtable->num_buckets;
+   second = cuckoohashtable->buckets[h2];    
+   
    for(i = 0; i< NUM_SLOTS; i++){
 
        printf("Temp2 Tag: %d, My Tag : %d\n", second[i].tag, tag);
@@ -112,10 +105,7 @@ bool removeKey(char* key){
     
     tag = hashTag(h1);    
     h1 = h1 % cuckoohashtable->num_buckets;
-    h2 = h2 % cuckoohashtable->num_buckets;
-   
     first = cuckoohashtable->buckets[h1];    
-    second = cuckoohashtable->buckets[h2];    
     
     printf("GET H1: %d, H2: %d, key: %s\n", h1, h2, key);
    
@@ -133,6 +123,9 @@ bool removeKey(char* key){
        }
     } 
 
+    h2 = h2 % cuckoohashtable->num_buckets;
+    second = cuckoohashtable->buckets[h2];    
+    
     for(i = 0; i< NUM_SLOTS; i++){
         if(second[i].tag == tag && second[i].entryNodeptr!=NULL){
            entryNode* entrynode = second[i].entryNodeptr;
@@ -181,10 +174,8 @@ entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
 
         tag = hashTag(h1);    
         h1 = h1 % htptr->num_buckets;
-        h2 = h2 % htptr->num_buckets;
         
         first = htptr->buckets[h1];    
-        second = htptr->buckets[h2];
         
         printf("PUT H1: %d, H2: %d, key: %s\n", h1, h2, curr_key);
 
@@ -206,6 +197,9 @@ entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
             }
         }
         
+        h2 = h2 % htptr->num_buckets;
+        second = htptr->buckets[h2];
+
         for(i = 0; i< NUM_SLOTS; i++){
             if (second[i].entryNodeptr == NULL){
                 entryNode* entrynode = (entryNode*) malloc(1*sizeof(entryNode));
