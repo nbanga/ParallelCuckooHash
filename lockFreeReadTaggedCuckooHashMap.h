@@ -20,7 +20,7 @@ typedef struct{
     tagNode** buckets;
     int num_buckets; 
     pthread_mutex_t write_lock;
-    int** keys_accessed_bitmap;
+    int* keys_accessed_bitmap;
     uint32_t* version_counter;
 }cuckooHashTable;
 
@@ -36,3 +36,4 @@ extern void resize();
 extern cuckooHashTable* createHashTable(int);
 extern void computeHash(const char*, uint32_t *, uint32_t*);
 extern unsigned char hashTag(uint32_t);
+extern void evictEntriesFromPath(int*, int*, int, int, char*, char*); 
