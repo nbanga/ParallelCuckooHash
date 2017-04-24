@@ -20,7 +20,8 @@ typedef struct{
     tagNode** buckets;
     int num_buckets; 
     pthread_mutex_t write_lock;
-    int* keys_accessed_bitmap;
+    int** keys_accessed_bitmap;
+    uint32_t* version_counter;
 }cuckooHashTable;
 
 
