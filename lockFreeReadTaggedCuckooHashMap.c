@@ -124,139 +124,12 @@ void freeHashTable(cuckooHashTable* newHashTable){
     return;
 }
 
-entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
-    int num_iterations = 0;
-    uint32_t h1 = 0, h2 = 0;
-    tagNode *first, *second;
-    tagNode *evictentry;
-    char *curr_key, *curr_value;
-    unsigned char tag;
-    int i, ver_index;
-    int eviction_path[MAX_ITERATIONS];
-    int evicted_key_version[MAX_ITERATIONS];
-    int evicted_node_counter = 0;
-    int evicted_key_version_counter = 0;
-
-    strcpy(curr_key,  key);
-    strcpy(curr_value, value);
-
-    char* temp_key = (char *) malloc(sizeof(char) * MAX_SIZE);
-    char* temp_value = (char *) malloc(sizeof(char) * MAX_SIZE);
-    
-    while(num_iterations < MAX_ITERATIONS){
-        printf("Num Iterations %d for key %s\n", num_iterations, key);
-        num_iterations++;
-        h1 = 0; h2 = 0;
-        computehash(curr_key, &h1, &h2);
-
-        tag = hashTag(h1);    
-        h1 = h1 % htptr->num_buckets;
-        h2 = h2 % htptr->num_buckets;
-        first = htptr->buckets[h1];    
-        second = htptr->buckets[h2];
-        ver_index = (h1 * NUM_SLOTS) % VERSION_COUNTER_SIZE;
-        
-        if(num_iterations != 1)
-            evicted_key_version[evicted_key_version_counter++] = ver_index;
-
-        printf("PUT H1: %d, H2: %d, key: %s\n", h1, h2, curr_key);
-
-        for(i = 0; i< NUM_SLOTS; i++){
-            if (first[i].entryNodeptr == NULL){
-               eviction_path[evicted_node_counter++] = (h1 * NUM_SLOTS) + i;
-               evictEntriesFromPath(eviction_path, evicted_key_version, evicted_node_counter, evicted_key_version_counter, key, value);
-            }
-            else if(num_iterations == 1 && !strcmp(first[i].entryNodeptr->key,curr_key)){
-                __sync_fetch_and_add(&cuckoohashtable->version_counter[ver_index], 1);
-                strcpy(first[i].entryNodeptr->value,curr_value);
-                __sync_fetch_and_add(&cuckoohashtable->version_counter[ver_index], 1);
-                pthread_mutex_unlock(&cuckoohashtable->write_lock);
-                return NULL;
-            }
-        }
-        
-        for(i = 0; i< NUM_SLOTS; i++){
-            if (second[i].entryNodeptr == NULL){
-                eviction_path[evicted_node_counter++] = (h2 * NUM_SLOTS) + i;
-                evictEntriesFromPath(eviction_path, evicted_key_version, evicted_node_counter, evicted_key_version_counter, key, value);
-            }
-            else if(num_iterations == 1 && !strcmp(second[i].entryNodeptr->key,curr_key)){
-                __sync_fetch_and_add(&cuckoohashtable->version_counter[ver_index], 1);
-                strcpy(second[i].entryNodeptr->value,curr_value);
-                __sync_fetch_and_add(&cuckoohashtable->version_counter[ver_index], 1);
-                pthread_mutex_unlock(&cuckoohashtable->write_lock);
-                return NULL;
-            }
-        }
-
-        int index = rand() % (2*NUM_SLOTS);
-        int bitmapindex;
-
-        evictentry = NULL;
-        
-        if(index >= 0 && index <NUM_SLOTS){
-            bitmapindex = h1 * NUM_SLOTS + index;
-            if(cuckoohashtable->keys_accessed_bitmap[bitmapindex] == 0){
-                cuckoohashtable->keys_accessed_bitmap[bitmapindex] = 1;
-                eviction_path[evicted_node_counter++] = bitmapindex;
-                evictentry = &first[index];
-            }  
-        }
-        else{
-            bitmapindex = h2 * NUM_SLOTS + (index - NUM_SLOTS);
-            if(cuckoohashtable->keys_accessed_bitmap[bitmapindex] == 0){
-                cuckoohashtable->keys_accessed_bitmap[bitmapindex] = 1;
-                eviction_path[evicted_node_counter++] = bitmapindex;
-                evictentry = &second[index - NUM_SLOTS];
-            } 
-        }
-
-        if(evictentry == NULL){
-
-            for(i=0; i<NUM_SLOTS; i++){
-                if(cuckoohashtable->keys_accessed_bitmap[(h1 * NUM_SLOTS) + i] == 0){
-                    cuckoohashtable->keys_accessed_bitmap[(h1 * NUM_SLOTS) + i] = 1;
-                    eviction_path[evicted_node_counter++] = (h1 * NUM_SLOTS) + i;
-                    evictentry = &first[i];
-                }
-            }
-            for(i=0; i<NUM_SLOTS; i++){
-                if(cuckoohashtable->keys_accessed_bitmap[(h2 * NUM_SLOTS) + i] == 0){
-                    cuckoohashtable->keys_accessed_bitmap[(h2 * NUM_SLOTS) + i] = 1;
-                    eviction_path[evicted_node_counter++] = (h2 * NUM_SLOTS) + i;
-                    evictentry = &second[i];
-                }
-            }
-        }
-
-        if(evictentry == NULL){
-            //TODO CYCLE DETECTED. 
-        } 
-
-        printf("Evicted Key %s with index %d\n", evictentry->entryNodeptr->key, index);
-        strcpy(temp_key, evictentry->entryNodeptr->key);
-        strcpy(temp_value, evictentry->entryNodeptr->value);
-
-        //evictentry.tag = tag;
-        //strcpy(evictentry.entryNodeptr->key, curr_key);
-        //strcpy(evictentry.entryNodeptr->value, curr_value);
-        
-        strcpy(curr_key, temp_key);
-        strcpy(curr_value, temp_value);
-    }
-    
-    entryNode* finalevictedNode = (entryNode *) malloc(sizeof(entryNode));
-    finalevictedNode->key = curr_key;
-    finalevictedNode->value = curr_value;
-    return finalevictedNode;
-}
-
 void evictEntriesFromPath(int* eviction_path, int* evicted_key_version, int eviction_path_counter, int evicted_key_version_counter, char* key, char* value){
+
     if(eviction_path_counter >= MAX_ITERATIONS){
         return;
     }
-
-    if(eviction_path_counter == 1){
+    else if(eviction_path_counter == 1){
         int index = eviction_path[0];
         int bucket = index / NUM_SLOTS;
         int slot = index % NUM_SLOTS;
@@ -274,11 +147,191 @@ void evictEntriesFromPath(int* eviction_path, int* evicted_key_version, int evic
         cuckoohashtable->buckets[bucket][slot].entryNodeptr = entrynode;
         return;
     }
+    else{
+        int dest_index = eviction_path[evicted_path_counter-1];
+        int src_index, evicted_key_version_index;
+        // evicted_key_version_counter - 1
+        cuckoohashtable->key_accessed_bitmap[dest_index]=0;
+        int i=evicted_path_counter-2;
+        for(;i>=0;i--){
+            src_index = eviction_path[i];
+            evicted_key_version_index = evicted_key_version[--evicted_key_version_counter];
+            cuckoohashtable->key_accessed_bitmap[src_index]=0;
+            int src_bucket = src_index / NUM_SLOTS;
+            int src_slot = src_index % NUM_SLOTS;
+            int dest_bucket = dest_index / NUM_SLOTS;
+            int dest_slot = dest_index % NUM_SLOTS;
+           
+            __sync_fetch_and_add(cuckoohashmap->version_counter[evicted_key_version_index],1);
+            tagNode src_node = cuckoohashtable->buckets[src_bucket][src_slot];
+            tagNode dest_node = cuckoohashtable->bucket[dest_bucket][dest_slot];
+            dest_node.tag = src_node.tag;
+            dest_node.entryNodeptr = (entryNode*) malloc(1*sizeof(entryNode));
+            dest_node.entryNodeptr->key = (char*)malloc(sizeof(char)*MAX_SIZE);
+            dest_node.entryNodeptr->value = (char*)malloc(sizeof(char)*MAX_SIZE);
+            strcpy(dest_node.entryNodeptr->key,src_node.entryNodeptr->key);
+            strcpy(dest_node.entryNodeptr->value,src_node.entryNodeptr->value);
+            free(src_node.entryNode);
 
-     
-
+            __sync_fetch_and_add(cuckoohashmap->version_counter[evicted_key_version_index],1);
+            dest_index = src_index;
+        }
+        
+        int dest_bucket = dest_index / NUM_SLOTS;
+        int dest_slot = dest_index % NUM_SLOTS;
+        uint32_t h1 = 0, h2 = 0;
+        computehash(key, &h1, &h2);
+        unsigned char tag = hashTag(h1);    
+        cuckoohashtable->key_accessed_bitmap[dest_index]=0;
+       
+        __sync_fetch_and_add(cuckoohashmap->version_counter[evicted_key_version_index],1);
+        dest_node = cuckoohashtable->bucket[dest_bucket][dest_slot];
+        dest_node.tag = tag;
+        dest_node.entryNodeptr = (entryNode*) malloc(1*sizeof(entryNode));
+        dest_node.entryNodeptr->key = (char*)malloc(sizeof(char)*MAX_SIZE);
+        dest_node.entryNodeptr->value = (char*)malloc(sizeof(char)*MAX_SIZE);
+        strcpy(dest_node.entryNodeptr->key,key);
+        strcpy(dest_node.entryNodeptr->value,value);
+        __sync_fetch_and_add(cuckoohashmap->version_counter[evicted_key_version_index],1);
+    }        
 }
 
+entryNode* _put(char *key, char *value){
+    int num_iterations = 0;
+    uint32_t h1 = 0, h2 = 0;
+    tagNode *first, *second;
+    tagNode *evictentry;
+    char *curr_key, *curr_value;
+    unsigned char tag;
+    int i, ver_index;
+    int eviction_path[MAX_ITERATIONS];
+    int evicted_key_version[MAX_ITERATIONS];
+    int evicted_path_counter = 0;
+    int evicted_key_version_counter = 0;
+
+    strcpy(curr_key,  key);
+    strcpy(curr_value, value);
+
+    char* temp_key = (char *) malloc(sizeof(char) * MAX_SIZE);
+    char* temp_value = (char *) malloc(sizeof(char) * MAX_SIZE);
+    
+    while(num_iterations < MAX_ITERATIONS){
+        printf("Num Iterations %d for key %s\n", num_iterations, key);
+        num_iterations++;
+        h1 = 0; 
+        h2 = 0;
+        computehash(curr_key, &h1, &h2);
+        h1 = h1 % cuckoohashtable->num_buckets;
+        h2 = h2 % cuckoohashtable->num_buckets;
+        first = cuckoohashtable->buckets[h1];    
+        second = cuckoohashtable->buckets[h2];
+        ver_index = (h1 * NUM_SLOTS) % VERSION_COUNTER_SIZE;
+        
+        printf("PUT H1: %d, H2: %d, key: %s\n", h1, h2, curr_key);
+
+        for(i = 0; i< NUM_SLOTS; i++){
+            if (first[i].entryNodeptr == NULL){
+               eviction_path[evicted_path_counter++] = (h1 * NUM_SLOTS) + i;
+               evictEntriesFromPath(eviction_path, evicted_key_version, evicted_path_counter, evicted_key_version_counter, key, value);
+               return true;
+            }
+            else if(num_iterations == 1 && !strcmp(first[i].entryNodeptr->key,curr_key)){
+                __sync_fetch_and_add(&cuckoohashtable->version_counter[ver_index], 1);
+                strcpy(first[i].entryNodeptr->value,curr_value);
+                __sync_fetch_and_add(&cuckoohashtable->version_counter[ver_index], 1);
+                //pthread_mutex_unlock(&cuckoohashtable->write_lock);
+                return true;
+            }
+        }
+        
+        for(i = 0; i< NUM_SLOTS; i++){
+            if(second[i].entryNodeptr == NULL){
+                eviction_path[evicted_path_counter++] = (h2 * NUM_SLOTS) + i;
+                evictEntriesFromPath(eviction_path, evicted_key_version, evicted_path_counter, evicted_key_version_counter, key, value);
+                return true;
+            }
+            else if(num_iterations == 1 && !strcmp(second[i].entryNodeptr->key,curr_key)){
+                __sync_fetch_and_add(&cuckoohashtable->version_counter[ver_index], 1);
+                strcpy(second[i].entryNodeptr->value,curr_value);
+                __sync_fetch_and_add(&cuckoohashtable->version_counter[ver_index], 1);
+                //pthread_mutex_unlock(&cuckoohashtable->write_lock);
+                return true;
+            }
+        }
+
+        //int index = rand() % (2*NUM_SLOTS);
+        int bitmapindex;
+        evictentry = NULL;
+        
+        /*if(index >= 0 && index <NUM_SLOTS){
+            bitmapindex = h1 * NUM_SLOTS + index;
+            if(cuckoohashtable->keys_accessed_bitmap[bitmapindex] == 0){
+                cuckoohashtable->keys_accessed_bitmap[bitmapindex] = 1;
+                eviction_path[evicted_node_counter++] = bitmapindex;
+                evictentry = &first[index];
+            }  
+        }
+        else{
+            bitmapindex = h2 * NUM_SLOTS + (index - NUM_SLOTS);
+            if(cuckoohashtable->keys_accessed_bitmap[bitmapindex] == 0){
+                cuckoohashtable->keys_accessed_bitmap[bitmapindex] = 1;
+                eviction_path[evicted_node_counter++] = bitmapindex;
+                evictentry = &second[index - NUM_SLOTS];
+            } 
+        }*/
+
+        //if(evictentry == NULL){
+
+        for(i=0; i<NUM_SLOTS; i++){
+            if(cuckoohashtable->keys_accessed_bitmap[(h1 * NUM_SLOTS) + i] == 0){
+                cuckoohashtable->keys_accessed_bitmap[(h1 * NUM_SLOTS) + i] = 1;
+                eviction_path[evicted_path_counter++] = (h1 * NUM_SLOTS) + i;
+                evictentry = &first[i];
+                break;
+            }
+        }
+        if(evictentry!=NULL){
+            for(i=0; i<NUM_SLOTS; i++){
+                if(cuckoohashtable->keys_accessed_bitmap[(h2 * NUM_SLOTS) + i] == 0){
+                    cuckoohashtable->keys_accessed_bitmap[(h2 * NUM_SLOTS) + i] = 1;
+                    eviction_path[evicted_path_counter++] = (h2 * NUM_SLOTS) + i;
+                    evictentry = &second[i];
+                    break;
+                }
+            }
+        }
+       // }
+
+        if(evictentry == NULL){
+            // cycle detected
+            return false;
+        } 
+        else{
+            if(num_iterations != 1){
+                evicted_key_version[evicted_key_version_counter++] = ver_index;
+            }
+        
+            printf("Evicted Key %s with index %d\n", evictentry->entryNodeptr->key, index);
+            strcpy(temp_key, evictentry->entryNodeptr->key);
+            strcpy(temp_value, evictentry->entryNodeptr->value);
+
+            //evictentry.tag = tag;
+            //strcpy(evictentry.entryNodeptr->key, curr_key);
+            //strcpy(evictentry.entryNodeptr->value, curr_value);
+            
+            strcpy(curr_key, temp_key);
+            strcpy(curr_value, temp_value);
+        }
+    }
+
+    //num iterations exceeded, resize
+    return false;
+    
+    /*entryNode* finalevictedNode = (entryNode *) malloc(sizeof(entryNode));
+    finalevictedNode->key = curr_key;
+    finalevictedNode->value = curr_value;
+    return finalevictedNode;*/
+}
 
 
 void resize(int num_buckets){
@@ -312,14 +365,16 @@ void resize(int num_buckets){
 }
 
 void put(char* key, char* value){
-
+    // have a gloabl lock on hashtable
+    // which is always read mode
+    // except in resize where we get write lock on the table
     pthread_mutex_lock(&cuckoohashtable->write_lock);
-    entryNode* res = _put(cuckoohashtable, key, value);
+    bool result = _put(cuckoohashtable, key, value);
    
-    if(res != NULL){
+    if(!result){
         printHashTable();
         resize((cuckoohashtable->num_buckets) * 2);
-        _put(cuckoohashtable, res->key, res->value);
+        _put(res->key, res->value);
         printHashTable();
     }
     
