@@ -4,7 +4,7 @@
 #define MAX_ITERATIONS 15
 #define MAX_SIZE 1024
 #define TAG_MASK 0xFF
-
+#define VERSION_COUNTER_SIZE 8192
 
 typedef struct enode{
     char *key;
@@ -18,7 +18,9 @@ typedef struct tnode{
 
 typedef struct{
     tagNode** buckets;
-    int num_buckets;    
+    int num_buckets; 
+    pthread_mutex_t write_lock;
+    int* keys_accessed_bitmap;
 }cuckooHashTable;
 
 
