@@ -22,14 +22,15 @@ typedef struct{
     pthread_mutex_t write_lock;
     int* keys_accessed_bitmap;
     uint32_t* version_counter;
+    pthread_rwlock_t hashTableLock; 
 }cuckooHashTable;
 
 
 extern cuckooHashTable* cuckoohashtable;
 
 extern char* get(char*);
-extern void put(char*, char*);
-extern entryNode* _put(cuckooHashTable*, char*, char*);
+extern void put(char*, char*, int);
+extern bool _put(char*, char*);
 extern bool removeKey(char*);
 extern void rehash();
 extern void resize();
