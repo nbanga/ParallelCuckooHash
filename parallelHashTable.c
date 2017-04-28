@@ -1,8 +1,6 @@
 #include "parallelHashTable.h"
 
 int num_entries_per_thread = 0;
-#define NUM_TOTAL_ENTRIES 1000000
-
 hashTable* hashtable;
 
 int hash(char* key){
@@ -211,11 +209,11 @@ int main(int argv, char** argc){
     printf("Parallel Hash Map:\n");
 
     int num_threads = atoi(argc[1]);
-    int num_buckets = atoi(argc[2]);
+    int num_buckets = TOTAL_BUCKETS;
 
     createHashTable(num_buckets,1.5);
 
-    num_entries_per_thread = (int)NUM_TOTAL_ENTRIES/num_threads;
+    num_entries_per_thread = (int) TOTAL_ENTRIES/num_threads;
     pthread_t putthreads[num_threads];
     pthread_t getthreads[num_threads];
     pthread_t getputthreads[num_threads];

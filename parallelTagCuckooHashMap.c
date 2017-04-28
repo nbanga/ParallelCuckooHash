@@ -1,8 +1,6 @@
 #include "parallelTagCuckooHashMap.h"
 
 int num_entries_per_thread=0;
-#define NUM_TOTAL_ENTRIES 1000000
-
 cuckooHashTable* cuckoohashtable;
 
 cuckooHashTable* createHashTable(int num_buckets){
@@ -314,11 +312,11 @@ int main(int argv, char** argc){
 
     printf("Parallel Cuckoo Hashmap with Tags\n");
     int num_threads = atoi(argc[1]);
-    int num_buckets = atoi(argc[2]);
+    int num_buckets = TOTAL_BUCKETS;
 
     cuckoohashtable = createHashTable(num_buckets);
 
-    num_entries_per_thread = (int)NUM_TOTAL_ENTRIES/num_threads;
+    num_entries_per_thread = (int) TOTAL_ENTRIES/num_threads;
     pthread_t putthreads[num_threads];
     pthread_t getthreads[num_threads];
     pthread_t getputthreads[num_threads];

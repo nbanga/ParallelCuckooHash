@@ -1,5 +1,4 @@
 #include "lockFreeReadTaggedCuckooHashMap.h"
-#define NUM_TOTAL_ENTRIES 1000000
 
 cuckooHashTable* cuckoohashtable;
 int num_entries_per_thread;
@@ -484,11 +483,11 @@ int main(int argv, char** argc){
 
     printf("Lock Free Read with Tags Cuckoo Hashmap\n");
     int num_threads = atoi(argc[1]);
-    int num_buckets = atoi(argc[2]);
+    int num_buckets = TOTAL_BUCKETS;
 
     cuckoohashtable = createHashTable(num_buckets);
 
-    num_entries_per_thread = (int)NUM_TOTAL_ENTRIES/num_threads;
+    num_entries_per_thread = (int) TOTAL_ENTRIES/num_threads;
 
     pthread_t putthreads[num_threads];
     pthread_t getthreads[num_threads];

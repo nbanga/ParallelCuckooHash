@@ -1,5 +1,4 @@
 #include "serialTagCuckooHashMap.h"
-#define TOTAL_ENTRIES 1000000
 
 cuckooHashTable* cuckoohashtable;
 int num_entries_per_iteration;
@@ -292,7 +291,7 @@ void put(char* key, char* value){
 int main(int argv, char** argc){
 
     int iterations = atoi(argc[1]);
-    int num_buckets = atoi(argc[2]);
+    int num_buckets = TOTAL_BUCKETS;
     num_entries_per_iteration = TOTAL_ENTRIES/iterations;
     struct timeval init, end;
     struct timezone tz;
