@@ -1,5 +1,8 @@
 #include "parallelCuckooHashMap.h"
 
+int num_entries_per_thread=0;
+#define NUM_TOTAL_ENTRIES 1000000
+
 cuckooHashTable* cuckoohashtable;
 
 cuckooHashTable* createHashTable(int num_buckets){
@@ -27,7 +30,6 @@ void computehash(char* key, uint32_t *h1, uint32_t *h2){
 }
 
 void printHashTable(void){
-    //printf("Print Hash Table\n");
     int buckets = cuckoohashtable->num_buckets;
     int i,j;
     bucketNode *newNode;
@@ -44,42 +46,33 @@ void printHashTable(void){
 }
 
 char* get(char* key){
-    pthread_rwlock_rdlock(&(cuckoohashtable->hashTableLock));
     uint32_t h1 = 0, h2 = 0;
     entryNode* temp;
     int i;    
-
     computehash(key, &h1, &h2);
-    //printf("GET H1: %d, H2: %d, key: %s\n", h1, h2, key);
-    
     h1 = h1 % cuckoohashtable->num_buckets;
     pthread_mutex_lock(&(cuckoohashtable->buckets[h1].bucketLock));
     temp = cuckoohashtable->buckets[h1].firstNode;    
     for(i = 0; i< NUM_SLOTS; i++){
        if(temp[i].key != NULL && !strcmp(temp[i].key, key)){
-           //printf("Get : Key : %s at [%d][%d]\n", temp[i].key, h1, i);
            pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
-           pthread_rwlock_unlock(&(cuckoohashtable->hashTableLock));
            return temp[i].value;
        }
     } 
     pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
     
-    h2 = h2 % cuckoohashtable->num_buckets;
-    pthread_mutex_lock(&(cuckoohashtable->buckets[h2].bucketLock));
-    temp = cuckoohashtable->buckets[h2].firstNode;    
-    for(i = 0; i< NUM_SLOTS; i++){
-       if(temp[i].key != NULL && !strcmp(temp[i].key, key)){
-          //printf("Get : Key : %s at [%d][%d]\n", temp[i].key, h2, i);
-          pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
-          pthread_rwlock_unlock(&(cuckoohashtable->hashTableLock));
-          return temp[i].value;
-       }
-    }     
-    pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
-    
-    pthread_rwlock_unlock(&(cuckoohashtable->hashTableLock));
-    printf("Get : NOT Found key : %s\n", key);
+    if(h1!=h2){
+        h2 = h2 % cuckoohashtable->num_buckets;
+        pthread_mutex_lock(&(cuckoohashtable->buckets[h2].bucketLock));
+        temp = cuckoohashtable->buckets[h2].firstNode;    
+        for(i = 0; i< NUM_SLOTS; i++){
+           if(temp[i].key != NULL && !strcmp(temp[i].key, key)){
+              pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
+              return temp[i].value;
+           }
+        } 
+        pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
+    }
     return NULL;
 }
 
@@ -163,73 +156,56 @@ entryNode* _put(char *key, char *value, int thread_id){
 
     srand48((unsigned)t);
     while(num_iterations < MAX_ITERATIONS){
-        //printf("Num Iterations %d for key %s\n", num_iterations, key);
         num_iterations++;
         computehash(curr_key, &h1, &h2);
-        //printf("PUT H1: %d, H2: %d, key: %s\n", h1, h2, curr_key);
-
         h1 = h1 % cuckoohashtable->num_buckets;
-        first = cuckoohashtable->buckets[h1].firstNode;    
         h2 = h2 % cuckoohashtable->num_buckets;
-        second = cuckoohashtable->buckets[h2].firstNode;
-
         if(h1>h2){
             uint32_t temp=h1; 
             h1=h2;
             h2=temp;
         }
-       
-        //printf("_put: Waiting for h1: %d lock thread_id : %d \n", h1, thread_id);
+        first = cuckoohashtable->buckets[h1].firstNode;    
+        second = cuckoohashtable->buckets[h2].firstNode;
         pthread_mutex_lock(&(cuckoohashtable->buckets[h1].bucketLock));
-        //printf("_put: acquired for h1: %d lock thread_id : %d \n", h1, thread_id);
         for(i = 0; i< NUM_SLOTS; i++){
             if(first[i].key == NULL){
                 first[i].key = (char *) malloc(sizeof(char) * MAX_SIZE);
                 first[i].value = (char *) malloc(sizeof(char) * MAX_SIZE);
                 strcpy(first[i].key, curr_key);
                 strcpy(first[i].value, curr_value);
-                //printf("First: Inserted Key %s in bucket %d, %d\n", key, h1, i); 
                 pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
-                //printf("_put: Released h1: %d\n", h1);
                 return NULL;
             }
             else if(!strcmp(first[i].key,curr_key)){
                 strcpy(first[i].value, curr_value);
                 pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
-                printf("_put: Released h1: %d\n", h1);
                 return NULL;
             }
         }
        
-        
         if(h1!=h2){
-            //printf("_put: Waiting for h2:%d lock thread_id: %d\n", h2, thread_id);
             pthread_mutex_lock(&(cuckoohashtable->buckets[h2].bucketLock));
-            //printf("_put: Acquired for h2:%d lock thread_id: %d\n", h2, thread_id);
             for(i = 0; i< NUM_SLOTS; i++){
                 if(second[i].key == NULL){
                     second[i].key = (char *) malloc(sizeof(char) * MAX_SIZE);
                     second[i].value = (char *) malloc(sizeof(char) * MAX_SIZE);
                     strcpy(second[i].key, curr_key);
                     strcpy(second[i].value, curr_value);
-                    //printf("Second: Inserted Key %s in bucket %d, %d\n", key, h2, i);
                     pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
                     pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
-                    //printf("_put: Released h2: %d\n", h2);
                     return NULL;
                 }
                 else if(!strcmp(second[i].key,curr_key)){
                     strcpy(second[i].value, curr_value);
                     pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
                     pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
-                    //printf("_put: Released h2: %d\n", h2);
                     return NULL;
                 }
             }
         }
 
         int index = rand_r(&t) % (2*NUM_SLOTS);
-
         if(index >= 0 && index <NUM_SLOTS){
             evictentry = first[index];
         }
@@ -237,23 +213,17 @@ entryNode* _put(char *key, char *value, int thread_id){
             evictentry = second[index - NUM_SLOTS];
         }
 
-        //printf("Evicted Key %s with index %d\n", evictentry.key, index);
         strcpy(temp_key, evictentry.key);
         strcpy(temp_value, evictentry.value);
-
         strcpy(evictentry.key, curr_key);
         strcpy(evictentry.value, curr_value);
-        //printHashTable();
-        
         strcpy(curr_key, temp_key);
         strcpy(curr_value, temp_value);
-
         pthread_mutex_unlock(&(cuckoohashtable->buckets[h1].bucketLock));
         if(h1!=h2){
             pthread_mutex_unlock(&(cuckoohashtable->buckets[h2].bucketLock));
         }
     }
-    
     entryNode* finalevictedNode = (entryNode *) malloc(sizeof(entryNode));
     finalevictedNode->key = curr_key;
     finalevictedNode->value = curr_value;
@@ -261,22 +231,15 @@ entryNode* _put(char *key, char *value, int thread_id){
 }
 
 void resize(int req_buckets, int thread_id){
-    //printf("In Resize============================== num_buckets = %d thread_id = %d\n", cuckoohashtable->num_buckets, thread_id);
-    //printf("resize: Waiting to lock, thread_id : %d \n", thread_id);
     pthread_rwlock_wrlock(&(cuckoohashtable->hashTableLock)); 
-    //printf("resize: Acquired lock, thread_id : %d \n", thread_id);
     if(req_buckets<=cuckoohashtable->num_buckets){
         pthread_rwlock_unlock(&(cuckoohashtable->hashTableLock)); 
-        //printf("resize: Released lock no change, thread_id : %d \n", thread_id);
         return;
     }
-
     bucketNode* oldBuckets = cuckoohashtable->buckets;
     int old_num_buckets = cuckoohashtable->num_buckets;
-
     int i, j;
     entryNode *res, *bucketRow;
-
     while(true){
         cuckoohashtable->num_buckets*=2;
         cuckoohashtable->buckets = (bucketNode*)malloc(cuckoohashtable->num_buckets*sizeof(bucketNode));
@@ -304,9 +267,6 @@ void resize(int req_buckets, int thread_id){
                 break;        
         }
         if(res != NULL){
-            printf("RESIZE: Value evicted left behind: %s\n", res->key);
-            //printf("Inside Resize: Free and Resize\n");
-            //printHashTable();
             bucketNode* temp = cuckoohashtable->buckets;
             free(temp);
         }
@@ -314,101 +274,134 @@ void resize(int req_buckets, int thread_id){
             break;
         }
     }
-    
-    //printHashTable();
     pthread_rwlock_unlock(&(cuckoohashtable->hashTableLock)); 
     free(oldBuckets);
-    //printf("resize: Released lock, thread_id : %d \n", thread_id);
 }
 
 void put(char* key, char* value, int thread_id){
-    //printf("\nput: Waiting for readlock thread_id: %d\n", thread_id);
     pthread_rwlock_rdlock(&(cuckoohashtable->hashTableLock)); 
-    //printf("put: Acquired readlock thread_id %d\n\n", thread_id);
     entryNode* res = _put(key, value, thread_id);
    
     if(res != NULL){
-        //printf("Value evicted left behind: %s\n", res->key);
-        //printHashTable();
         int old_num_buckets = cuckoohashtable->num_buckets;
         pthread_rwlock_unlock(&(cuckoohashtable->hashTableLock)); 
         resize(old_num_buckets*2, thread_id);
         pthread_rwlock_rdlock(&(cuckoohashtable->hashTableLock)); 
         _put(res->key, res->value, thread_id);
-        //printHashTable();
     }
-    //printf("Put a New value : %s\n", value);
-    //printHashTable();
     pthread_rwlock_unlock(&(cuckoohashtable->hashTableLock)); 
-    //printf("put: Released Readlock %d\n", thread_id);
     return;
 }
 
 void *putthreadfunc(void *id){
     int thread_id = *(int *)id;
-
-    char* keys = (char*)malloc(30*sizeof(char)); 
-    char* value = (char*)malloc(30*sizeof(char)); 
- 
+    char* keys = (char*)malloc(20*sizeof(char));  
     int i;
-    for(i=0;i<10;i++){
-        //printf("allocated key %d\n",i);
-        snprintf(keys,10,"%d",i + (10*thread_id));
-        //printf("Thread: %d key%d: %s\n", thread_id, i, keys);
-        snprintf(value,20,"%s%s",keys,"values");
-        //printf("value: %s\n",value);
-        put(keys,value,thread_id);
-        printf("put in entry %s by %d\n", keys, thread_id);
-    }
-    
-    return NULL;
+    for(i=0;i<num_entries_per_thread;i++){
+        snprintf(keys,20,"%d",i + (100000*thread_id));
+        put(keys,keys, thread_id);
+    }    
+    return;
 }
 
 void *getthreadfunc(void *id){ 
     int thread_id = *(int *)id;
-    char* keys = (char*)malloc(20*sizeof(char)); 
- 
+    char* keys = (char*)malloc(20*sizeof(char));  
     int i;
-    for(i=0;i<10;i++){
-        snprintf(keys,10,"%d",i + (10*thread_id));
-        printf("GET key: %s, value: %s, thread: %d\n", keys, get(keys), thread_id);
-        if(get(keys)==NULL){
+    for(i=0;i<num_entries_per_thread;i++){
+        snprintf(keys,20,"%d",i + (1000*thread_id));
+        get(keys);
+    }
+    return;
+}
+
+void *getputthreadfunc(void* id){
+    int thread_id = *(int *)id;
+    char* keys = (char*)malloc(20*sizeof(char));  
+    int i;
+    int count = 0;
+    for(i=0;i<num_entries_per_thread;i++){
+        if(count==25){
+            snprintf(keys,20,"%d",i + (100000*thread_id));
+            put(keys,keys,thread_id);
+            count=0;
+        }
+        else{
+            count++;
+            snprintf(keys,20,"%d",i + (1000*thread_id));
             get(keys);
         }
     }
-    return NULL;
+    return;
 }
+ 
 
+int main(int argv, char** argc){
+    printf("Parallel Cuckoo HashMap:\n");
 
-int main(void){
-    cuckoohashtable = createHashTable(2);
-    printf("createHashTable: num_buckets %d\n", cuckoohashtable->num_buckets);
+    int num_threads = atoi(argc[1]);
+    int num_buckets = atoi(argc[2]);
 
-    pthread_t putthreads[5];
-    pthread_t getthreads[5];
+    cuckoohashtable = createHashTable(num_buckets);
 
+    num_entries_per_thread = (int)NUM_TOTAL_ENTRIES/num_threads;
+
+    pthread_t putthreads[num_threads];
+    pthread_t getthreads[num_threads];
+    pthread_t getputthreads[num_threads];
+    
+    struct timeval init, end;
+
+    double start_time, end_time;
+    gettimeofday(&init, NULL);
+    start_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
+    
     int count = 0;
-    for(count = 0; count < 5; count ++){
+    for(count = 0; count < num_threads; count ++){
     	pthread_create(&putthreads[count], NULL, putthreadfunc, (void *) &count); 
     }
-     
-    for(count = 0; count < 5; count ++){
+    
+    for(count = 0; count < num_threads; count ++){
 	pthread_join(putthreads[count], NULL);
     }
+    
+    gettimeofday(&init, NULL);
+    end_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
 
-  
-    for(count = 0; count < 5; count ++){ 
+    printf("PUT: time taken -  %.9lf\n", end_time - start_time);
+    
+    gettimeofday(&init, NULL);
+    start_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
+            
+    for(count = 0; count < num_threads; count ++){ 
 	pthread_create(&getthreads[count], NULL, getthreadfunc, (void *) &count); 
     }
 
-  	 
-    for(count = 0; count < 5; count ++){
+    for(count = 0; count < num_threads; count ++){
 	pthread_join(getthreads[count], NULL);
     }
-
-    printHashTable();
-    printf("createHashTable: num_buckets %d\n", cuckoohashtable->num_buckets);
-
-    printf("Program Completed\n");
+    
+    gettimeofday(&init, NULL);
+    end_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
+    
+    printf("GET: time taken -  %.9lf\n", end_time - start_time);
+    
+    gettimeofday(&init, NULL);
+    start_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
+    
+    for(count = 0; count < num_threads; count ++){
+    	pthread_create(&getputthreads[count], NULL, getputthreadfunc, (void *) &count); 
+    }
+    
+    for(count = 0; count < num_threads; count ++){
+	pthread_join(getputthreads[count], NULL);
+    }
+ 
+    gettimeofday(&init, NULL);
+    end_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
+    
+        
+    printf("GETPUT: time taken -  %.9lf\n", end_time - start_time);
     return 0;
 }
+
