@@ -1,6 +1,9 @@
 #include "serialHashTable.h"
+#define  TOTAL_ENTRIES 1000000
 
 hashTable* hashtable;
+int num_entries_per_iteration;
+
 
 int hash(char* key){
     unsigned long int hashval=1;
@@ -39,7 +42,6 @@ entryNode* createEntryNode(char* key, char* value){
     strcpy(newEntryNode->key,key);
     strcpy(newEntryNode->value,value);
     newEntryNode->next = NULL;
-    //printf("createEntryNode: key %s\n", newEntryNode->key);
     return newEntryNode;   
 }
 
@@ -79,7 +81,7 @@ char* get(char* key){
 }
 
 void resize() {
-    //TODO: calculate time
+    printf("Resize\n");
     entryNode** old_buckets = hashtable->buckets;
     int old_num_buckets = hashtable->num_buckets;
     
@@ -108,12 +110,9 @@ void resize() {
 }
 
 void put(char* key, char* value){
-    printf("%s %s\n", key, value);
     int hashIndex = hash(key)%hashtable->num_buckets;
     entryNode* prev = NULL;
     entryNode* curr = hashtable->buckets[hashIndex];
-
-    printf("hashIndex: %d\n", hashIndex);
 
     while(curr!=NULL){
         if(!strcmp(curr->key,key)){
@@ -125,7 +124,6 @@ void put(char* key, char* value){
     }
 
     hashtable->num_entries++;
-    //printf("hashtable num_entries: %d\n", hashtable->num_entries);
 
     entryNode* temp = createEntryNode(key,value);
     if(prev==NULL){
@@ -140,60 +138,68 @@ void put(char* key, char* value){
     }
 }
 
-int main(void){
-    createHashTable(10,1.5);
-    printf("createHashTable: num_buckets %d\n", hashtable->num_buckets);
+int main(int argv, char** argc){
 
-    char** keys = (char**)malloc(20*sizeof(char*)); 
-    printf("allocated keys\n");
-    char* value = (char*)malloc(20*sizeof(char)); 
-    printf("allocated values\n");
+    int iterations = atoi(argc[1]);
+    int num_buckets = atoi(argc[2]);
+    num_entries_per_iteration = (int) TOTAL_ENTRIES/iterations;
+    struct timeval init, end;
+    struct timezone tz;
+    double start_time, end_time;
     
-    int i;
-    for(i=0;i<10;i++){
-        keys[i] = (char*)malloc(10*sizeof(char));
-        //printf("allocated key %d\n",i);
-        snprintf(keys[i],10,"%d",i);
-        //printf("key%d: %s\n", i, keys[i]);
-        snprintf(value,20,"%d%s",i,"values");
-        //printf("value: %s\n",value);
-        put(keys[i],value);
-        //printf("put in entry %d\n", i);
+    createHashTable(num_buckets,1.5);
+    printf("Serial HashMap\n");
+
+    char* keys = (char*) malloc(1000*sizeof(char)); 
+    int i, j, count=0;
+
+    gettimeofday(&init, &tz);
+    start_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
+
+    for(j = 0; j < iterations; j++){ 
+    	for(i=0;i<num_entries_per_iteration;i++){
+        	snprintf(keys,10,"%d",i + (100000 * j));
+        	put(keys, keys);
+    	}
     }
 
-    printf("num_entries after put = %d\n", hashtable->num_entries);
-    printf("Get\n");
-    for(i=0;i<10;i++){
-        printf("key: %s, value: %s\n", keys[i],get(keys[i]));
+    gettimeofday(&end, &tz);
+    end_time = (double) end.tv_sec + (double) end.tv_usec / 1000000.0;
+    printf("Put Time Taken: %.9lf\n", end_time - start_time);
+
+    gettimeofday(&init, &tz);
+    start_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
+
+    for(j = 0; j < iterations; j++){ 
+    	for(i=0;i<num_entries_per_iteration;i++){
+        	snprintf(keys,10,"%d",i + (1000 * j));
+        	get(keys);
+    	}
     }
 
-    printf("testing resize\n");
-    for(i=11;i<20;i++){
-        keys[i] = (char*)malloc(10*sizeof(char));
-        snprintf(keys[i],10,"%d",i);
-        snprintf(value,20,"%d%s",i,"values");
-        put(keys[i],value);
-    }
-    
-    printf("createHashTable: num_buckets %d\n", hashtable->num_buckets);
+    gettimeofday(&end, &tz);
+    end_time = (double) end.tv_sec + (double) end.tv_usec / 1000000.0;
+    printf("Get Time Taken :   %.9lf\n", end_time - start_time);
 
-    for(i=0;i<5;i++){
-        printf("remove key %s : %d\n", keys[i], removeKey(keys[i]));
-    }
+    gettimeofday(&init, &tz);
+    start_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
 
-    printf("remove key %s : %d\n", "21", removeKey("21"));
+    for(j = 0; j < iterations; j++){ 
+    	for(i=0;i<num_entries_per_iteration;i++){
+        	snprintf(keys,10,"%d",i + (1000 * j));
+        	get(keys);
+		count++;
+		if(count == 25){
+			count = 0;
+        		snprintf(keys,10,"%d",i + (100000 * j));
+			put(keys, keys);
+		}
+    	}
+    }
+ 
+    gettimeofday(&end, &tz);
+    end_time = (double) end.tv_sec + (double) end.tv_usec / 1000000.0;
+    printf("GetPut Time Taken:   %.9lf\n", end_time - start_time);
+   
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

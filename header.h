@@ -4,4 +4,5 @@
 #include <stdbool.h>
 #include <limits.h>
 #include <pthread.h>
+#include <sys/time.h>
 #include "lookup3.h"
