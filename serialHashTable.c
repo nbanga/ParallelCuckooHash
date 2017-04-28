@@ -146,24 +146,19 @@ int main(int argv, char** argc){
     double start_time, end_time;
     
     createHashTable(num_buckets,1.5);
-    printf("Serial HashMap\n");
+    printf("\nSerial HashMap\n");
 
     char* keys = (char*) malloc(1000*sizeof(char)); 
     int i, j, count=0;
 
-    gettimeofday(&init, &tz);
-    start_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
-
+    printf("Preloading data\n");
+    
     for(j = 0; j < iterations; j++){ 
     	for(i=0;i<num_entries_per_iteration;i++){
         	snprintf(keys,10,"%d",i + (100000 * j));
         	put(keys, keys);
     	}
     }
-
-    gettimeofday(&end, &tz);
-    end_time = (double) end.tv_sec + (double) end.tv_usec / 1000000.0;
-    printf("Put Time Taken: %.9lf\n", end_time - start_time);
 
     gettimeofday(&init, &tz);
     start_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;

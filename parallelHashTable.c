@@ -206,11 +206,11 @@ void *getputthreadfunc(void* id){
 }
  
 int main(int argv, char** argc){
-    printf("Parallel Hash Map:\n");
 
     int num_threads = atoi(argc[1]);
     int num_buckets = TOTAL_BUCKETS;
 
+    printf("\nParallel Hash Map : %d threads\n", num_threads);
     createHashTable(num_buckets,1.5);
 
     num_entries_per_thread = (int) TOTAL_ENTRIES/num_threads;
@@ -221,8 +221,7 @@ int main(int argv, char** argc){
     struct timeval init, end;
 
     double start_time, end_time;
-    gettimeofday(&init, NULL);
-    start_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
+    printf("Preloading data\n");
     
     int count = 0;
     for(count = 0; count < num_threads; count ++){
@@ -232,11 +231,6 @@ int main(int argv, char** argc){
     for(count = 0; count < num_threads; count ++){
 	pthread_join(putthreads[count], NULL);
     }
-    
-    gettimeofday(&init, NULL);
-    end_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
-
-    printf("PUT: time taken: %.9lf\n", end_time - start_time);
     
     gettimeofday(&init, NULL);
     start_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;

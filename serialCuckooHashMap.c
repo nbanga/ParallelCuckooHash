@@ -258,10 +258,9 @@ int main(int argv, char** argc){
 
     char* keys = (char*) malloc(1000*sizeof(char)); 
     int i, j, count=0;
-    printf("Serial CuckooHashMap\n");
+    printf("\nSerial CuckooHashMap\n");
 
-    gettimeofday(&init, &tz);
-    start_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
+    printf("Preloading data\n");
 
     for(j = 0; j < iterations; j++){ 
     	for(i=0;i<num_entries_per_iteration;i++){
@@ -269,10 +268,6 @@ int main(int argv, char** argc){
         	put(keys, keys);
     	}
     }
-
-    gettimeofday(&end, &tz);
-    end_time = (double) end.tv_sec + (double) end.tv_usec / 1000000.0;
-    printf("PUT Time Taken:   %.9lf\n", end_time - start_time);
 
     gettimeofday(&init, &tz);
     start_time = (double)init.tv_sec + (double) init.tv_usec / 1000000.0;
