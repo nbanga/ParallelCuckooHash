@@ -279,29 +279,8 @@ bool _put(char *key, char *value){
             }
         }
 
-        //int index = rand() % (2*NUM_SLOTS);
-        //int bitmapIndex;
         tagNode* evictentry = NULL;
         
-        /*if(index >= 0 && index <NUM_SLOTS){
-            bitmapindex = h1 * NUM_SLOTS + index;
-            if(cuckoohashtable->keys_accessed_bitmap[bitmapindex] == 0){
-                cuckoohashtable->keys_accessed_bitmap[bitmapindex] = 1;
-                eviction_path[evicted_node_counter++] = bitmapindex;
-                evictentry = &first[index];
-            }  
-        }
-        else{
-            bitmapindex = h2 * NUM_SLOTS + (index - NUM_SLOTS);
-            if(cuckoohashtable->keys_accessed_bitmap[bitmapindex] == 0){
-                cuckoohashtable->keys_accessed_bitmap[bitmapindex] = 1;
-                eviction_path[evicted_node_counter++] = bitmapindex;
-                evictentry = &second[index - NUM_SLOTS];
-            } 
-        }*/
-
-        //if(evictentry == NULL){
-
         for(i=0; i<NUM_SLOTS; i++){
             int evict_index = (h1*NUM_SLOTS)+i;
             if(cuckoohashtable->keys_accessed_bitmap[evict_index] == 0){
@@ -322,8 +301,6 @@ bool _put(char *key, char *value){
                 }
             }
         }
-       // }
-
         if(evictentry == NULL){
             //printf("cycle detected\n");
             return false;
@@ -332,34 +309,14 @@ bool _put(char *key, char *value){
             if(num_iterations != 1){
                 evicted_key_version[evicted_key_version_counter++] = ver_index;
             }
-        
-            //printf("Evicted Key %s with index %d\n", evictentry->entryNodeptr->key,i);
             strcpy(curr_key, evictentry->entryNodeptr->key);
             strcpy(curr_value, evictentry->entryNodeptr->value);
-
-            //evictentry.tag = tag;
-            //strcpy(evictentry.entryNodeptr->key, curr_key);
-            //strcpy(evictentry.entryNodeptr->value, curr_value);
-            
-            //strcpy(curr_key, temp_key);
-            //strcpy(curr_value, temp_value);
         }
     }
-
-    //printf("num iterations exceeded, resize\n");
     return false;
-    
-    /*entryNode* finalevictedNode = (entryNode *) malloc(sizeof(entryNode));
-    finalevictedNode->key = curr_key;
-    finalevictedNode->value = curr_value;
-    return finalevictedNode;*/
 }
 
 void resize(int thread_id){
-    //printf("Resize: num_buckets = %d thread_id = %d\n", cuckoohashtable->num_buckets, thread_id);
-    //printf("resize: waiting to lock, thread_id : %d \n", thread_id);
-    //printf("resize: acquired lock, thread_id : %d \n", thread_id);
-    
     tagNode** oldBuckets = cuckoohashtable->buckets;
     int old_num_buckets = cuckoohashtable->num_buckets;
 
@@ -399,9 +356,6 @@ void resize(int thread_id){
         }
 
         if(!res){
-            //printf("resize: value evicted left behind: %s\n", res->key);
-            //printf("inside resize: free and resize\n");
-            //printhashtable();
             tagNode** temp = cuckoohashtable->buckets;
             free(temp);
         }

@@ -79,7 +79,6 @@ char* get(char* key){
 }
 
 void resize() {
-    printf("Resize\n");
     entryNode** old_buckets = hashtable->buckets;
     int old_num_buckets = hashtable->num_buckets;
     

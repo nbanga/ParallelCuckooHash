@@ -244,7 +244,6 @@ entryNode* _put(cuckooHashTable* htptr, char *key, char *value){
 }
 
 void resize(int num_buckets){
-    printf("In Resize\n");
     cuckooHashTable *newHashTable = createHashTable(num_buckets);
     int i, j;
     entryNode* res;
